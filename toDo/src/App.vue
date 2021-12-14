@@ -8,10 +8,10 @@
       </form>
     </div>
     <ul v-if="taskList.length" class="card">
-      <li class="list-item card" :class="{isDone: task.checked}" v-for="(task, i) in taskList" :key="i">
-        <input :id="i" type="checkbox" @click="task.checked = !task.checked">
-        <label :for="i">{{ i + 1 }}. {{ task.text }}</label>
-        <button class="btn danger" @click="removeTask(i)">Удалить</button>
+      <li class="list-item card" :class="{isDone: task.checked}" v-for="(task, i) in taskList" :key="task.id">
+        <input :id="task.id" type="checkbox" @click="checkedTask(task.id)">
+        <label :for="task.id">{{ i + 1 }}. {{ task.text }}</label>
+        <button class="btn danger" @click="removeTask(task.id)">Удалить</button>
       </li>
     </ul>
     <ul v-else class="card">
@@ -22,6 +22,7 @@
 
 <script>
 import './theme.css'
+import axios from 'axios'
 
 export default {
   data() {
@@ -30,20 +31,43 @@ export default {
       taskList: [],
     }
   },
+  mounted() {
+    this.loadToDo()
+  },
   methods: {
-    createToDo() {
-      if (this.task.length !== 0) {
-        this.taskList.push(
-            {
-              text: this.task,
-              checked: false
-            }
-        )
-        this.task = ''
-      }
+    async loadToDo() {
+      const {data} = await axios.get('https://todo-list-valentinzc-default-rtdb.europe-west1.firebasedatabase.app/todo.json');
+      this.taskList = Object.keys(data).map(key => {
+        return {
+          id: key,
+          ...data[key]
+        }
+      })
     },
-    removeTask(idx) {
-      this.taskList.splice(idx, 1)
+    async createToDo() {
+      await axios.post('https://todo-list-valentinzc-default-rtdb.europe-west1.firebasedatabase.app/todo.json', {
+        text: this.task,
+        checked: false,
+      })
+      this.taskList.push(
+                {
+                  text: this.task,
+                  checked: false,
+                  id: this.task.id
+                }
+            )
+      this.task = '';
+    },
+   async removeTask(id) {
+      await axios.delete(`https://todo-list-valentinzc-default-rtdb.europe-west1.firebasedatabase.app/todo/${id}.json`)
+      this.taskList = this.taskList.filter(task => task.id !== id)
+    },
+    async checkedTask(id) {
+       const task = this.taskList.find(task => task.id === id);
+        task.checked = !this.checked
+        await axios.put(`https://todo-list-valentinzc-default-rtdb.europe-west1.firebasedatabase.app/todo/${id}.json`, {
+        checked: !task.checked
+      })
     }
   }
 }
